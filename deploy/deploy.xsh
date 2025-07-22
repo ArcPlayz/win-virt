@@ -27,9 +27,9 @@ password = ''
 if $(whoami) != 'root':
 	input('You should probably run this script as root.\nUse CTRL+C to stop it or ENTER to continue.')
 
-if !(command -v hivexregedit).rtn:
+if !(which hivexregedit).rtn:
 	echo hivexregedit not found! Please install hivex.
-	exit
+	exit(1)
 
 umount --all-targets @(part_root)
 umount --all-targets @(part_efi)
