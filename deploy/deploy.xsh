@@ -5,8 +5,6 @@ part_efi = '' # FAT32 EFI partition to copy the Windows bootloader to
 iso = '' # path to Windows ISO file
 disk = '' # the disk on which those partitions are located (ex. /dev/nvme0nX, /dev/sdX) (it is needed because its GUID has to be inserted into BCD)
 
-# !!! Unmount these partitions to avoid problems !!!
-
 # !!! This script won't add Windows Boot Manager to UEFI boot menu !!!
 # You should add chainloader entry to your bootloader configuration
 
@@ -28,6 +26,13 @@ password = ''
 
 if $(whoami) != 'root':
 	input('You should probably run this script as root.\nUse CTRL+C to stop it or ENTER to continue.')
+
+if !(command -v hivexregedit).rtn:
+	echo hivexregedit not found! Please install hivex.
+	exit
+
+umount --all-targets @(part_root)
+umount --all-targets @(part_efi)
 
 # copying windows
 

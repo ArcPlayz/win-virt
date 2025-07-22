@@ -12,7 +12,13 @@ part_data = '' # ExFAT partition suitable for sharing files between Linux and Wi
 if $(whoami) != 'root':
 	input('You should probably run this script as root.\nUse CTRL+C to stop it or ENTER to continue.')
 
-umount @(part_data)
+if !(command -v sgdisk).rtn:
+	echo sgdisk not found! Please install gptfdisk
+	exit
+
+umount --all-targets @(part_root)
+umount --all-targets @(part_efi)
+umount --all-targets @(part_data)
 
 def size(part):
 	return int(
