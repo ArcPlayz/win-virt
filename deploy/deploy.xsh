@@ -31,6 +31,10 @@ if !(which hivexregedit).rtn:
 	echo hivexregedit not found! Please install hivex.
 	exit(1)
 
+if !(which wimlib-imagex).rtn:
+	echo wimlib-imagex not found! Please install wimlib.
+	exit(1)
+
 umount --all-targets @(part_root)
 umount --all-targets @(part_efi)
 
