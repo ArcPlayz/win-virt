@@ -1,9 +1,8 @@
 #!/usr/bin/xonsh
 
-part_root = '' # NTFS partition to deploy Windows on (ex. /dev/nvme0nXpY, /dev/sdXY)
+part_root = '' # NTFS partition to deploy Windows on (e.g. /dev/nvme0nXpY, /dev/sdXY)
 part_efi = '' # FAT32 EFI partition to copy the Windows bootloader to
 iso = '' # path to Windows ISO file
-disk = '' # the disk on which those partitions are located (ex. /dev/nvme0nX, /dev/sdX) (it is needed because its GUID has to be inserted into BCD)
 
 # !!! This script won't add Windows Boot Manager to UEFI boot menu !!!
 # You should add chainloader entry to your bootloader configuration
@@ -33,6 +32,28 @@ if !(which hivexregedit).rtn:
 
 if !(which wimlib-imagex).rtn:
 	echo wimlib-imagex not found! Please install wimlib.
+	exit(1)
+
+from json import loads
+from pathlib import Path
+
+blockdevices = loads(
+	$(lsblk -J -o NAME,PTTYPE,PATH)
+)['blockdevices']
+
+disk = None
+for _disk in blockdevices:
+	if _disk['pttype'] == 'gpt':
+		for _part in _disk['children']:
+			if _part['path'] == str(Path(part_root).resolve(True)):
+				disk = _disk['path']
+
+				break
+		else:
+			continue
+		break
+else:
+	echo Unable to find disk, on which specified partitions are present.
 	exit(1)
 
 umount --all-targets @(part_root)

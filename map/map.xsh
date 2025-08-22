@@ -1,8 +1,7 @@
 #!/usr/bin/xonsh
 
-part_root = '' # Windows partition (ex. /dev/nvme0nXpY, /dev/sdXY)
+part_root = '' # Windows partition (e.g. /dev/nvme0nXpY, /dev/sdXY)
 part_efi = '' # Windows EFI partition
-disk = '' # the disk on which root and EFI partitions are located (its GUID has to be added to virtual GPT scheme)
 part_data = '' # ExFAT partition suitable for sharing files between Linux and Windows
 
 # !!! When "gpt" file (virtual GPT scheme) is already created and you change the size of any of
@@ -14,6 +13,28 @@ if $(whoami) != 'root':
 
 if !(which sgdisk).rtn:
 	echo sgdisk not found! Please install gptfdisk
+	exit(1)
+
+from json import loads
+from pathlib import Path
+
+blockdevices = loads(
+	$(lsblk -J -o NAME,PTTYPE,PATH)
+)['blockdevices']
+
+disk = None
+for _disk in blockdevices:
+	if _disk['pttype'] == 'gpt':
+		for _part in _disk['children']:
+			if _part['path'] == str(Path(part_root).resolve(True)):
+				disk = _disk['path']
+
+				break
+		else:
+			continue
+		break
+else:
+	echo Unable to find disk, on which specified partitions are present.
 	exit(1)
 
 umount --all-targets @(part_root)
