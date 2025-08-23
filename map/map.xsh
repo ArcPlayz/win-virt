@@ -2,7 +2,7 @@
 
 part_root = '' # Windows partition (e.g. /dev/nvme0nXpY, /dev/sdXY)
 part_efi = '' # Windows EFI partition
-part_data = '' # ExFAT partition suitable for sharing files between Linux and Windows
+part_data = '' # Partition suitable for sharing files between Linux and Windows
 
 # !!! When "gpt" file (virtual GPT scheme) is already created and you change the size of any of
 # !!! provided partitions you have to remove it so it will be created again
