@@ -12,7 +12,7 @@ if $(whoami) != 'root':
 	input('You should probably run this script as root.\nUse CTRL+C to stop it or ENTER to continue.')
 
 if !(which sgdisk).rtn:
-	echo sgdisk not found! Please install gptfdisk
+	echo "sgdisk not found! Please install gptfdisk"
 	exit(1)
 
 from json import loads
@@ -34,7 +34,7 @@ for _disk in blockdevices:
 			continue
 		break
 else:
-	echo Unable to find disk, on which specified partitions are present.
+	echo "Unable to find disk, on which specified partitions are present."
 	exit(1)
 
 umount --all-targets @(part_root)
@@ -78,4 +78,3 @@ if generate:
 	-n 0::+@(size(part_efi)) -t 0:ef00 -u 0:@(uuid(part_efi)) \
 	-n 0::+@(size(part_data)) -t 0:0700 -u 0:@(uuid(part_data)) \
 	/dev/mapper/windows
-

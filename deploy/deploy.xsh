@@ -27,11 +27,11 @@ if $(whoami) != 'root':
 	input('You should probably run this script as root.\nUse CTRL+C to stop it or ENTER to continue.')
 
 if !(which hivexregedit).rtn:
-	echo hivexregedit not found! Please install hivex.
+	echo "hivexregedit not found! Please install hivex."
 	exit(1)
 
 if !(which wimlib-imagex).rtn:
-	echo wimlib-imagex not found! Please install wimlib.
+	echo "wimlib-imagex not found! Please install wimlib."
 	exit(1)
 
 from json import loads
@@ -53,7 +53,7 @@ for _disk in blockdevices:
 			continue
 		break
 else:
-	echo Unable to find disk, on which specified partitions are present.
+	echo "Unable to find disk, on which specified partitions are present."
 	exit(1)
 
 umount --all-targets @(part_root)
@@ -125,5 +125,5 @@ echo @(bcd) | hivexregedit --merge /tmp/win_efi/EFI/Microsoft/Boot/BCD
 
 umount /tmp/win_efi; rmdir /tmp/win_efi
 
-echo ========== Disk GUID ==========
+echo "========== Disk GUID =========="
 echo @(uuid_disk)
