@@ -1,7 +1,7 @@
 #!/usr/bin/env xonsh
 
 if $(whoami) != 'root':
-	input('You should probably run this script as root.\nUse CTRL+C to stop it or ENTER to continue.')
+	input('You should probably run this script as root. Use CTRL+C to stop it or ENTER to continue.')
 
 dmsetup remove windows
 

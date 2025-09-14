@@ -1,5 +1,7 @@
 #!/usr/bin/env xonsh
 
+from subprocess import CalledProcessError
+
 $RAISE_SUBPROC_ERROR = True
 
 from contextlib import contextmanager
@@ -38,16 +40,19 @@ args = parser.parse_args()
 partition_root, partition_efi, iso, username, password = args.partition_root, args.partition_efi, args.iso, args.username, args.password
 
 if $(whoami) != 'root':
-	input('You should probably run this script as root.\nUse CTRL+C to stop it or ENTER to continue.')
+	input('You should probably run this script as root. Use CTRL+C to stop it or ENTER to continue.')
 
-with unstrict():
-	if !(which hivexregedit).rtn:
-		echo "hivexregedit not found! Please install hivex."
-		exit(1)
+try:
+	which hivexregedit
+except CalledProcessError:
+	echo "hivexregedit not found! Please install hivex."
+	exit(1)
 
-	if !(which wimlib-imagex).rtn:
-		echo "wimlib-imagex not found! Please install wimlib."
-		exit(1)
+try:
+	which wimlib-imagex
+except CalledProcessError:
+	echo "wimlib-imagex not found! Please install wimlib."
+	exit(1)
 
 from json import loads
 
@@ -79,8 +84,12 @@ mount @(iso) /tmp/win_iso -o ro,loop --mkdir
 
 image = '/tmp/win_iso/sources/install.'
 
-with unstrict():
-	image += 'wim' if not !(test -f @(image + 'wim')).rtn else 'esd'
+try:
+	test -f @(image + 'wim')
+except CalledProcessError:
+	image += 'esd'
+else:
+	image += 'wim'
 
 wimlib-imagex info @(image)
 
@@ -113,6 +122,7 @@ unattend = $(cat unattend.xml.template) \
 .replace('{{ username }}', username) \
 .replace('{{ password }}', password)
 
+mkdir -p /tmp/win_root/Windows/System32/Sysprep
 echo @(unattend) > /tmp/win_root/Windows/System32/Sysprep/Unattend.xml
 
 umount /tmp/win_root; rmdir /tmp/win_root

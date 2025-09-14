@@ -1,5 +1,7 @@
 #!/usr/bin/env xonsh
 
+from subprocess import CalledProcessError
+
 $RAISE_SUBPROC_ERROR = True
 
 from contextlib import contextmanager
@@ -32,16 +34,20 @@ args = parser.parse_args()
 partition_root, partition_efi, partition_data = args.partition_root, args.partition_efi, args.partition_data
 
 if $(whoami) != 'root':
-	input('You should probably run this script as root.\nUse CTRL+C to stop it or ENTER to continue.')
+	input('You should probably run this script as root. Use CTRL+C to stop it or ENTER to continue.')
 
-with unstrict():
-	if !(which sgdisk).rtn:
-		echo "sgdisk not found! Please install gptfdisk"
-		exit(1)
+try:
+	which sgdisk
+except CalledProcessError:
+	echo "sgdisk not found! Please install gptfdisk"
+	exit(1)
 
-	if not !(test -L /tmp/loop_gpt).rtn:
-		echo "/tmp/loop_gpt exists; it seems that the device is already mapped!"
-		exit(1)
+try:
+	test -L /tmp/loop_gpt
+except CalledProcessError: pass
+else:
+	echo "/tmp/loop_gpt exists; it seems that the device is already mapped!"
+	exit(1)
 
 from json import loads
 
@@ -68,8 +74,10 @@ with unstrict():
 	umount --all-targets @(partition_efi)
 	umount --all-targets @(partition_data)
 
-	if !(test -f gpt).rtn:
-		dd if=/dev/zero of=gpt bs=512 count=77
+try:
+	test -f gpt
+except CalledProcessError:
+	dd if=/dev/zero of=gpt bs=512 count=77
 
 ln -s $(losetup -f --show gpt) /tmp/loop_gpt
 
