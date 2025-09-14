@@ -19,12 +19,12 @@
 			</OOBE>
 
 			<AutoLogon>
-				<Username>{USER}</Username>
+				<Username>{{ username }}</Username>
 				<Domain>.</Domain>
 				<Enabled>true</Enabled>
 				<LogonCount>1</LogonCount>
 				<Password>
-					<Value>{PASS}</Value>
+					<Value>{{ password }}</Value>
 					<PlainText>true</PlainText>
 				</Password>
 			</AutoLogon>
@@ -32,11 +32,11 @@
 			<UserAccounts>
 				<LocalAccounts>
 					<LocalAccount wcm:action="add">
-						<Name>{USER}</Name>
-						<DisplayName>{USER}</DisplayName>
+						<Name>{{ username }}</Name>
+						<DisplayName>{{ username }}</DisplayName>
 						<Group>Administrators</Group>
 						<Password>
-							<Value>{PASS}</Value>
+							<Value>{{ password }}</Value>
 							<PlainText>true</PlainText>
 						</Password>
 					</LocalAccount>
