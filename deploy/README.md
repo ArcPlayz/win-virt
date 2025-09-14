@@ -7,9 +7,11 @@ You should add chainloader entry to your bootloader configuration
 
 On Limine:
 
+```
 /Windows
 	protocol: efi
 	path: guid({{ PARTUUID }}):/EFI/Microsoft/Boot/bootmgfw.efi
+```
 
 You can get {{ PARTUUID }} using blkid
 Also this script will print it
