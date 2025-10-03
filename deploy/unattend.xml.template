@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<unattend xmlns="urn:schemas-microsoft-com:unattend" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+	<settings pass="oobeSystem">
+		<component name="Microsoft-Windows-International-Core" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<UILanguage>en-US</UILanguage>
+			<InputLocale>en-US</InputLocale>
+			<SystemLocale>en-GB</SystemLocale>
+			<UserLocale>en-GB</UserLocale>
+		</component>
+
+		<component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<OOBE>
+				<HideEULAPage>true</HideEULAPage>
+				<NetworkLocation>Home</NetworkLocation>
+				<ProtectYourPC>3</ProtectYourPC>
+				<HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+				<SkipMachineOOBE>true</SkipMachineOOBE>
+				<SkipUserOOBE>true</SkipUserOOBE>
+			</OOBE>
+
+			<AutoLogon>
+				<Username>{{ username }}</Username>
+				<Domain>.</Domain>
+				<Enabled>true</Enabled>
+				<LogonCount>1</LogonCount>
+				<Password>
+					<Value>{{ password }}</Value>
+					<PlainText>true</PlainText>
+				</Password>
+			</AutoLogon>
+
+			<UserAccounts>
+				<LocalAccounts>
+					<LocalAccount wcm:action="add">
+						<Name>{{ username }}</Name>
+						<DisplayName>{{ username }}</DisplayName>
+						<Group>Administrators</Group>
+						<Password>
+							<Value>{{ password }}</Value>
+							<PlainText>true</PlainText>
+						</Password>
+					</LocalAccount>
+				</LocalAccounts>
+			</UserAccounts>
+		</component>
+	</settings>
+</unattend>
