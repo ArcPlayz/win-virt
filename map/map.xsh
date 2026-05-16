@@ -2,18 +2,19 @@
 
 from subprocess import CalledProcessError
 
-$RAISE_SUBPROC_ERROR = True
+$XONSH_SUBPROC_CMD_RAISE_ERROR = True
 
 from contextlib import contextmanager
 
 @contextmanager
 def unstrict():
-	original = $RAISE_SUBPROC_ERROR
-	$RAISE_SUBPROC_ERROR = False
+	original = $XONSH_SUBPROC_CMD_RAISE_ERROR
+	$XONSH_SUBPROC_CMD_RAISE_ERROR = False
 	try:
 		yield
+	except: pass
 	finally:
-		$RAISE_SUBPROC_ERROR = original
+		$XONSH_SUBPROC_CMD_RAISE_ERROR = original
 
 from argparse import ArgumentParser
 
