@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+
+import subprocess
+from shutil import which
+from getpass import getuser
+from pathlib import Path
+import json
+from argparse import ArgumentParser
+from collections import namedtuple
+from uuid import UUID
+
+parser = ArgumentParser('deploy')
+
+parser.add_argument(
+    'partition_root', type = str, help = 'NTFS partition to deploy Windows on (e.g. /dev/nvme0nXpY, /dev/sdXY)'
+)
+parser.add_argument(
+    'partition_efi', type = str, help = 'FAT32 EFI partition to copy the Windows bootloader to'
+)
+parser.add_argument(
+    'iso', type = str, help = 'path to Windows ISO file'
+)
+parser.add_argument(
+    'username', type = str, help = 'name of the local user that will be created via Unattend.xml'
+)
+parser.add_argument(
+    'password', type = str, help = 'password of the user'
+)
+
+args = parser.parse_args()
+
+partition_root, partition_efi, iso, username, password = args.partition_root, args.partition_efi, args.iso, args.username, args.password
+
+def s(c, i = None, capture = True):
+    p = subprocess.run(
+        c.split(),
+        capture_output = capture, text = True,
+        input = i,
+        check = True
+    )
+    if capture: return p.stdout.strip()
+
+assert getuser() == 'root'
+
+assert which('hivexregedit')
+assert which('wimlib-imagex')
+assert which('mkfs.fat')
+
+blockdevices = json.loads(s('lsblk -b -J -o PTTYPE,PATH,PARTUUID,PTUUID,MOUNTPOINTS'))['blockdevices']
+
+part = namedtuple('part', ('uuid', 'uuid_disk', 'mountpoints'))
+
+parts = {}
+for _part in blockdevices:
+    if _part['pttype'] == 'gpt':
+        parts[_part['path']] = part(
+            _part['partuuid'], _part['ptuuid'], _part['mountpoints']
+        )
+assert parts[partition_root].uuid_disk == parts[partition_efi].uuid_disk
+
+if parts[partition_root].mountpoints: s(f'umount -q --all-targets {partition_root}')
+if parts[partition_efi].mountpoints: s(f'umount -q --all-targets {partition_efi}')
+
+# copying windows
+
+Path('/tmp/win_iso').mkdir(); s(f'mount {iso} /tmp/win_iso -o ro,loop')
+
+image = '/tmp/win_iso/sources/install.'
+image += 'wim' if Path(image + 'wim').exists() else 'esd'
+
+try:
+    print(s(f'wimlib-imagex info {image}'))
+
+    index = input('index (Ctrl + C to cancel)> ')
+except: raise
+else:
+    s(f'mkfs.ntfs -Q {partition_root}')
+
+    s(f'wimlib-imagex apply {image} {index} {partition_root}', capture = False)
+finally:
+    s('umount /tmp/win_iso'); Path('/tmp/win_iso').rmdir()
+
+# copying bootloader
+
+s(f'mkfs.fat -F32 {partition_efi}')
+
+Path('/tmp/win_efi').mkdir(); s(f'mount {partition_efi} /tmp/win_efi')
+
+Path('/tmp/win_root').mkdir(); s(f'mount {partition_root} /tmp/win_root')
+
+Path('/tmp/win_efi/EFI/Microsoft').mkdir(parents = True)
+Path('/tmp/win_root/Windows/Boot/EFI').copy('/tmp/win_efi/EFI/Microsoft/Boot')
+Path('/tmp/win_root/Windows/Boot/Resources').copy_into('/tmp/win_efi/EFI/Microsoft/Boot')
+Path('/tmp/win_root/Windows/Boot/Fonts').copy_into('/tmp/win_efi/EFI/Microsoft/Boot')
+
+# preconfiguring windows
+
+with open('unattend.xml.template') as fd:
+    unattend = fd.read()\
+.replace('{{ username }}', username)\
+.replace('{{ password }}', password)
+
+Path('/tmp/win_root/Windows/System32/Sysprep').mkdir(exist_ok = True)
+with open('/tmp/win_root/Windows/System32/Sysprep/Unattend.xml', 'w') as fd: fd.write(unattend)
+
+s('umount /tmp/win_root'); Path('/tmp/win_root').rmdir()
+
+# generating bcd
+
+def uuid_to_reg(uuid):
+    return ','.join(f'{b:02x}' for b in UUID(uuid).bytes_le)
+
+with open('BCD.reg.template') as fd:
+    bcd = fd.read()\
+.replace('{{ partition_root }}', uuid_to_reg(parts[partition_root].uuid))\
+.replace('{{ partition_efi }}', uuid_to_reg(parts[partition_efi].uuid))\
+.replace('{{ disk }}', uuid_to_reg(parts[partition_root].uuid_disk))
+
+Path('empty.dat').copy('/tmp/win_efi/EFI/Microsoft/Boot/BCD')
+s('hivexregedit --merge /tmp/win_efi/EFI/Microsoft/Boot/BCD', bcd)
+
+s('umount /tmp/win_efi'); Path('/tmp/win_efi').rmdir()
+
+print(parts[partition_root].uuid_disk)

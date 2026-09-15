@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+
+import subprocess
+from shutil import which
+from getpass import getuser
+from pathlib import Path
+import json
+from argparse import ArgumentParser
+from collections import namedtuple
+
+parser = ArgumentParser('map')
+
+parser.add_argument(
+    'partition_root', type = str, help = 'windows NTFS partition (e.g. /dev/nvme0nXpY, /dev/sdXY)'
+)
+parser.add_argument(
+    'partition_efi', type = str, help = 'windows FAT32 EFI partition'
+)
+parser.add_argument(
+    'partition_data', type = str, help = 'partition suitable for sharing files between Linux and Windows'
+)
+
+args = parser.parse_args()
+
+partition_root, partition_efi, partition_data = args.partition_root, args.partition_efi, args.partition_data
+
+def s(c, i = None):
+    return subprocess.run(
+        c.split(),
+        capture_output = True, text = True,
+        input = i,
+        check = True
+    ).stdout.strip()
+
+assert getuser() == 'root'
+
+assert which('sgdisk')
+
+assert not Path('/tmp/loop_gpt').exists()
+
+blockdevices = json.loads(s('lsblk -b -J -o PTTYPE,PATH,PARTUUID,PTUUID,SIZE,MOUNTPOINTS,LOG-SEC'))['blockdevices']
+assert blockdevices[0]['log-sec'] == 512
+
+part = namedtuple('part', ('uuid', 'size', 'uuid_disk', 'mountpoints'))
+
+parts = {}
+for _part in blockdevices:
+    if _part['pttype'] == 'gpt':
+        parts[_part['path']] = part(
+            _part['partuuid'], _part['size'] // 512, _part['ptuuid'], _part['mountpoints']
+        )
+assert parts[partition_root].uuid_disk == parts[partition_efi].uuid_disk
+
+if parts[partition_root].mountpoints: s(f'umount -q --all-targets {partition_root}')
+if parts[partition_efi].mountpoints: s(f'umount -q --all-targets {partition_efi}')
+if parts[partition_data].mountpoints: s(f'umount -q --all-targets {partition_data}')
+
+with open('gpt', 'wb') as fd: fd.truncate(512 * 67)
+Path('/tmp/loop_gpt').symlink_to(s('losetup -f --show gpt'))
+
+s('dmsetup create windows', f'''\
+0 34 linear /tmp/loop_gpt 0
+34 {parts[partition_root].size} linear {partition_root} 0
+{34 + parts[partition_root].size} {parts[partition_efi].size} linear {partition_efi} 0
+{34 + parts[partition_root].size + parts[partition_efi].size} {parts[partition_data].size} linear {partition_data} 0
+{34 + parts[partition_root].size + parts[partition_efi].size + parts[partition_data].size} 33 linear /tmp/loop_gpt 34\
+''')
+
+s(f'''\
+sgdisk -o -a 1 \
+-U {parts[partition_root].uuid_disk} \
+-n 0::+{parts[partition_root].size} -t 0:0700 -u 0:{parts[partition_root].uuid} \
+-n 0::+{parts[partition_efi].size} -t 0:ef00 -u 0:{parts[partition_efi].uuid} \
+-n 0::+{parts[partition_data].size} -t 0:0700 -u 0:{parts[partition_data].uuid} \
+/dev/mapper/windows\
+''')
+
